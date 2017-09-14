@@ -1,0 +1,675 @@
+<link rel="import" href="../polymer/polymer-element.html">
+
+<link rel="import" href="../iron-input/iron-input.html">
+<link rel="import" href="../paper-input/paper-input-container.html">
+<link rel="import" href="../paper-input/paper-input-error.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-form-element-behavior/iron-form-element-behavior.html">
+<link rel="import" href="../iron-validatable-behavior/iron-validatable-behavior.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
+<link rel="import" href="../iron-selector/iron-selector.html">
+
+<link rel="import" href="tk-token-field-dropdown.html">
+
+<dom-module id="tk-token-field">
+    <template>
+        <style>
+            :host {
+                display: block;
+            }
+
+            :host([hidden]) {
+                display: none !important;
+            }
+
+            .tokens {
+                margin-right: 6px;
+                min-height: 24px;
+            }
+
+            .tokens paper-button {
+                background: var(--tk-token-field-badge-color, --default-primary-color);
+                margin: 2px 0;
+                color: var(--tk-token-field-badge-text-color, --text-primary-color);
+                height: 18px;
+                font-size: 12px;
+                min-width: initial;
+            }
+
+            .tokens paper-button iron-icon {
+                height: 16px;
+                width: 16px;
+            }
+
+            input {
+                font: inherit;
+                outline: none;
+                box-shadow: none;
+                border: none;
+                width: auto;
+                max-width: 100%;
+                min-width: 1.8em;
+                background-color: transparent;
+            }
+
+            .container {
+                @apply(--layout-horizontal);
+            }
+
+            iron-selector > * {
+                padding: 16px 16px;
+            }
+
+            .horizontal-section {
+                padding: 0;
+            }
+
+            .iron-selected {
+                background-color: var(--tk-token-field-dropdown-selected-color, --default-primary-color);
+                color: var(--tk-token-field-dropdown-selected-text-color, --text-primary-color);
+            }
+
+            label,
+            .container {
+                cursor: text;
+            }
+
+            ::slotted [prefix] {
+                margin-right: 4px;
+            }
+        </style>
+
+        <paper-input-container
+                always-float-label="[[_computeAlwaysFloatLabel(value, alwaysFloatLabel)]]"
+                attr-for-value="value"
+                on-tap="_handleContainerTap"
+                disabled$="[[disabled]]"
+                invalid="[[invalid]]">
+
+            <label slot="label" hidden$="[[!label]]" aria-hidden="true">[[label]]
+                <slot name="label-suffix"></slot>
+            </label>
+
+            <slot name="prefix"></slot>
+
+            <div class="paper-input-input container" slot="input">
+				<span class="tokens">
+					<template is="dom-repeat" items="[[_tokens]]" as="token">
+						<paper-button
+                                tabindex="-1"
+                                data-token$="[[_getItemValue(token)]]">[[_getItemLabel(token)]]<iron-icon icon="clear" on-tap="_handleDeleteToken"></iron-icon></paper-button>
+					</template>
+
+                    <iron-input aria-labelledby="label"
+                                required$="[[required]]"
+                                bind-value="{{_inputValue}}"
+                                allowed-pattern="[[allowedPattern]]"
+                                prevent-invalid-input="[[preventInvalidInput]]"
+                                autofocus$="[[autofocus]]"
+                                autocomplete="off"
+                                disabled$="[[disabled]]">
+					    <input id="inputValue">
+				    </iron-input>
+				</span>
+            </div>
+
+            <slot name="suffix"></slot>
+
+            <template is="dom-if" if="[[errorMessage]]">
+                <paper-input-error aria-live="assertive">[[errorMessage]]</paper-input-error>
+            </template>
+
+        </paper-input-container>
+
+        <span id="inputWidthHelper">[[_inputValue]]</span>
+
+        <tk-token-field-dropdown id="dropdownInput" auto-fit-on-attach no-overlap vertical-align="top" horizontal-align="left">
+            <div slot="token-dropdown-content">
+                <iron-selector id="itemList" selected="{{itemSelected}}">
+                    <template is="dom-repeat" items="{{_filteredItems}}" as="item">
+                        <div class="tk-token-selectable" name="[[_getItemValue(item)]]">[[_getItemLabel(item)]]</div>
+                    </template>
+                </iron-selector>
+            </div>
+        </tk-token-field-dropdown>
+
+    </template>
+
+    <script>
+			/**
+			 * `tk-token-field`
+			 * A field that displays tokens
+			 *
+			 * @customElement
+			 * @polymer
+			 * @demo demo/index.html
+			 */
+			class TkTokenField extends Polymer.mixinBehaviors([Polymer.IronFormElementBehavior, Polymer.IronA11yKeysBehavior, Polymer.IronValidatableBehavior], Polymer.Element) {
+				static get is() {
+					return 'tk-token-field'
+				}
+
+				static get properties() {
+					return {
+						/**
+						 * The label for this input.
+						 */
+						label: String,
+
+						/**
+						 * Value contains a comma seperated list of the selected items. In case you use data objects the value property will contain a comma seperated list of values located at the dataValuePath.
+						 */
+						value: {
+							notify: true,
+							type: String,
+							value: function () {
+								return ''
+							}
+						},
+
+						/**
+						 * The data attribute can be used to set the list box options. This method expects an array or function of objects or string values. If using an array of objects the default properties are value and label [{"value": 21, "label": "Mark"},{...}]
+						 */
+						data: {
+							type: Object,
+							observer: '_dataChanged',
+							value: function () {
+								return {}
+							}
+						},
+
+						/**
+						 * The data label path attribute can be used to change the default path "value" to a custom path. For example if set to "id" the data objects should look something like this {"id": 21, "label": "Mark"}.
+						 */
+						dataValuePath: {
+							type: String,
+							value: 'value'
+						},
+
+						/**
+						 * The data label path attribute can be used to change the default path "label" to a custom path. For example if set to "name" the data objects should look something like this {"value": 21, "name": "Mark"}
+						 */
+						dataLabelPath: {
+							type: String,
+							value: 'label'
+						},
+
+						/**
+						 * Optionaly you can supply the element with a list of items which will populate the dropdown list
+						 */
+						_items: {
+							notify: true,
+							type: Array,
+							value: function () {
+								return []
+							}
+						},
+
+						allowedDuplicateValues: {
+							type: Boolean,
+							value: false
+						},
+
+						/**
+						 * Regular expression that list the characters allowed as input. This pattern represents the allowed characters for the field; as the user inputs text, each individual character will be checked against the pattern (rather than checking the entire value as a whole). The recommended format should be a list of allowed characters; for example, [a-zA-Z0-9-!]
+						 */
+						allowedPattern: {
+							type: String
+						},
+
+						/**
+						 * Set to true to auto-validate the input value.
+						 */
+						autoValidate: {
+							type: Boolean,
+							value: false
+						},
+
+						autofocus: {
+							type: Boolean
+						},
+
+						/**
+						 * Set to true to disable this input.
+						 */
+						disabled: {
+							type: Boolean,
+							value: false
+						},
+
+						/**
+						 * The error message to display when the input is invalid.
+						 */
+						errorMessage: {
+							type: String
+						},
+
+						/**
+						 * Set to true to prevent the user from entering invalid input. If allowedPattern is set, any character typed by the user will be matched against that pattern, and rejected if it's not a match. Pasted input will have each character checked individually; if any character doesn't match allowedPattern, the entire pasted string will be rejected. If allowedPattern is not set, it will use the type attribute (only supported for type=number).
+						 */
+						preventInvalidInput: {
+							type: Boolean,
+							value: false
+						},
+
+						_modeDropDown: {
+							type: Boolean,
+							value: false
+						},
+
+						/**
+						 * alwaysFloatLabel
+						 */
+						alwaysFloatLabel: {
+							type: Boolean,
+							value: false
+						},
+
+						/**
+						 * Maximum number of tokens allowed in value
+						 */
+						maxTokens: {
+							type: Number
+						},
+
+						/**
+						 * This is the internal working list for the dropdown box. This list will exclude the potential selected tokens.
+						 */
+						_filteredItems: {
+							notify: true,
+							type: Array,
+							value: function () {
+								return []
+							}
+						},
+
+						/**
+						 * Helper method to determine if the token input has an dropdown item list
+						 */
+						_hasDropDown: {
+							type: Boolean,
+							computed: '_computeHasDropDown(_items)'
+						},
+
+						/**
+						 * Set to true to mark the input as required. If you're using PaperInputBehavior to
+						 * implement your own paper-input-like element, bind this to
+						 * the `<input is="iron-input">`'s `required` property.
+						 */
+						required: {
+							type: Boolean,
+							value: false
+						},
+
+						/**
+						 * This field will be bind to the actual input field
+						 */
+						_inputValue: {
+							type: String,
+							notify: true,
+							value: ''
+						},
+
+						_tokens: {
+							type: Array,
+							computed: '_valueAsItemArray(value, _modeDropDown)'
+						},
+
+                        itemSelected: {
+							type: Object,
+                          value: null,
+                          observer: '_itemSelected'
+                        }
+					}
+				}
+
+				static get observers() {
+					return ['_observeInputChange(_inputValue)',
+						'_filterItems(value)',
+						'_itemsChanged(_items.splice)']
+				}
+
+				get keyBindings() {
+					return {
+						'enter': '_onEnter',
+						'backspace': '_onBackspace'
+					}
+				}
+
+				/**
+				 * Returns a reference to the input element.
+				 */
+				get inputElement() {
+					return this.$.inputValue
+				}
+
+				attached() {
+					super.attached()
+
+            /* Initialize the input helper span element for determining the actual width of the input text. This width will be used to create a dynamic width on the input field */
+					this.$.inputWidthHelper.style = window.getComputedStyle(this.$.inputValue, null).cssText
+					this.$.inputWidthHelper.style.position = 'absolute'
+					this.$.inputWidthHelper.style.top = '-999px'
+					this.$.inputWidthHelper.style.left = '0'
+					this.$.inputWidthHelper.style.padding = '0'
+					this.$.inputWidthHelper.style.width = 'auto'
+					this.$.inputWidthHelper.style['white-space'] = 'pre'
+
+					this.$.inputValue.addEventListener('keyup', e => this._handleUpDown(e))
+					this.$.inputValue.addEventListener('focus', e => this._handleInputFocus(e))
+
+					this._filterItems()
+				}
+
+
+				/**
+				 * This will return an array of the selected objects
+				 */
+				getSelectedItems() {
+					if (this._modeDropDown) {
+						return this._tokens()
+					}
+				}
+
+				_setDataSource(dataSource) {
+					this.dataSource = dataSource
+					this._initializeItems()
+				}
+
+				_dataChanged(data) {
+					if (typeof data === 'function') {
+						this._setDataSource(data)
+					}
+					if (Array.isArray(data)) {
+						this.async(function () {
+							this._setDataSource(function () {
+								return data
+							})
+						}.bind(this))
+					}
+				}
+
+				_initializeItems() {
+					if (this.dataSource) {
+						var data = this.dataSource()
+						if (data && data instanceof Promise) {
+							data.then(function (res) {
+								this._setItems(res)
+							}.bind(this))
+						} else {
+							this._setItems(data)
+						}
+					}
+				}
+
+				_setItems(data) {
+					if (data.length > 0 && typeof data[0] === 'string') {
+						var items = []
+						data.forEach(function (value) {
+							var item = {}
+							item[this.dataValuePath] = item[this.dataLabelPath] = value
+							items.push(item)
+						}.bind(this))
+						this.set('_items', items)
+					} else {
+						this.set('_items', data)
+					}
+					this.set('_modeDropDown', true)
+				}
+
+				/**
+				 * This method will automaticly set the label float.
+				 */
+				_computeAlwaysFloatLabel(value, alwaysFloatLabel) {
+					if (alwaysFloatLabel) {
+						return true
+					}
+					return !(this._valueAsArray().length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
+				}
+
+				_itemsChanged(items) {
+					this._filterItems()
+				}
+
+				_lookupItemByPath(item, path) {
+					if (item === undefined) {
+						return
+					}
+					var parts = path.split(".")
+					if (parts.length === 1) {
+						return item[parts[0]]
+					}
+					return this._lookupItemByPath(item[parts[0]], parts.slice(1).join("."))
+				}
+
+				_getItemLabel(item) {
+					return this._lookupItemByPath(item, this.dataLabelPath)
+				}
+
+				_getItemValue(item) {
+					return this._lookupItemByPath(item, this.dataValuePath)
+				}
+
+				_valueAsArray() {
+					var value = this.value.split(',')
+					return value.length === 1 && value[0] === '' ? [] : value
+				}
+
+				_valueAsItemArray() {
+					var values = this._valueAsArray()
+					var items = []
+					values.forEach(function (value) {
+						var item = {}
+						item[this.dataValuePath] = item[this.dataLabelPath] = value
+						if (this._modeDropDown) {
+							item = this._items.find(function (item) {
+								return this._getItemValue(item) === value
+							}.bind(this))
+						}
+						items.push(item)
+					}.bind(this))
+					return items
+				}
+
+				_itemSelected(itemIdx) {
+					if (itemIdx === null || itemIdx === undefined || itemIdx < 0 || itemIdx > this._filteredItems.length - 1) { return }
+					this._addToken(this._filteredItems[itemIdx])
+					setTimeout(function () {
+						this.focus()
+					}.bind(this), 0)
+				}
+
+				/**
+				 * Recalculate string width after input change
+				 */
+				_observeInputChange() {
+					this.$.inputValue.style.width = (this.$.inputWidthHelper.offsetWidth + 10) + 'px'
+					this._filterItems()
+				}
+
+				_filterItems() {
+					if (this._hasDropDown && this._filteredItems) {
+						this.splice('_filteredItems', 0, this._filteredItems.length)
+						var filtered = this._items.filter(function (item) {
+							return this._inputValue.length === 0 || (this._getItemLabel(item).toLowerCase()).indexOf(this._inputValue.toLowerCase()) !== -1
+						}.bind(this))
+						this._items.forEach(function (item) {
+							var values = this._valueAsArray()
+							var itemIndex = filtered.findIndex(function (filteredItem) {
+								return this._getItemValue(filteredItem) === this._getItemValue(item)
+							}.bind(this))
+
+							if (itemIndex !== -1) {
+								if (this.allowedDuplicateValues || values.indexOf(this._getItemValue(item)) === -1) {
+									this.push('_filteredItems', item)
+								}
+							}
+						}.bind(this))
+					}
+				}
+
+				_handleUpDown(event) {
+					event.preventDefault()
+					if (this._hasDropDown && this.$.dropdownInput.dropdown.opened) {
+						var ironSelector = this.$$('iron-selector')
+						if (event.keyCode === 38) {
+							if (ironSelector.selected) {
+								ironSelector.selectPrevious()
+							}
+						} else if (event.keyCode === 40) {
+							if (ironSelector.selected === undefined) {
+								ironSelector.selectIndex(0)
+							} else {
+								ironSelector.selectNext()
+							}
+						}
+					} else if (event.keyCode === 38 || event.keyCode === 40) {
+						this._openDropdown()
+					}
+				}
+
+				_onBackspace(e) {
+					if (this._inputValue.length === 0) {
+						this._removeLastToken()
+					}
+				}
+
+				_onEnter() {
+					if (this.$.dropdownInput.dropdown.opened && this._filteredItems.length > 0) {
+						var item = this._items.find(function (item) {
+							return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
+						}.bind(this))
+						this._addToken(item)
+					} else {
+						if (this._inputValue && this._inputValue.length > 0 && !this._modeDropDown) {
+							var item = {}
+							item[this.dataValuePath] = item[this.dataLabelPath] = this._inputValue
+							this._addToken(item)
+						}
+					}
+					this._openDropdown()
+				}
+
+
+				_handleDeleteToken(e) {
+					var el = (e.target.tagName === 'IRON-ICON' ? e.target.parentElement : e.target)
+					this._removeToken(el.dataset.token)
+					this.focus()
+					e.stopPropagation()
+				}
+
+
+				_removeLastToken() {
+					var value = this._valueAsArray()
+					if (value.length > 0) {
+						this._removeToken(value[value.length - 1])
+					}
+				}
+
+
+				_addToken(item) {
+					var values = this._valueAsArray()
+					if (this.maxTokens && values.length >= this.maxTokens) {
+						return
+					}
+					values.push(this._getItemValue(item))
+					this.set('value', values.toString())
+					this._resetInput()
+					this._autoValidate()
+				}
+
+
+				_resetInput() {
+					this.set('_inputValue', '')
+					if (this._hasDropDown && this._filteredItems.length > 0) {
+						this.$$('iron-selector').selectIndex(0)
+					}
+				}
+
+
+				_removeToken(token) {
+					var value = this._valueAsArray()
+					value.splice(value.indexOf(token), 1)
+					this.set('value', value.toString())
+					this._autoValidate()
+				}
+
+
+				_autoValidate() {
+					if (this.autoValidate) {
+						this.validate()
+					}
+				}
+
+
+				/**
+				 * Returns true if `value` is valid. The validator provided in `validator` will be used first,
+				 * then any constraints.
+				 * @return {boolean} True if the value is valid.
+				 */
+				validate() {
+					var valid = true
+
+					// Empty, required input is invalid
+					if (this.required && this.value === '') {
+						valid = false
+					} else if (this.hasValidator()) {
+						valid = Polymer.IronValidatableBehavior.validate.call(this, this.value)
+					}
+
+					this.invalid = !valid
+					this.fire('iron-input-validate')
+					return valid
+				}
+
+
+				_handleContainerTap(e) {
+					this._openDropdown()
+					this.focus()
+				}
+
+
+				_openDropdown() {
+					if (this._hasDropDown && !this.$.dropdownInput.dropdown.opened) {
+						this.$.dropdownInput.open()
+						this.$$('iron-selector').selected = this.$$('iron-selector').selected || 0
+					}
+				}
+
+
+				_handleInputFocus(e) {
+					this._triggerComputeFloatLabel()
+				}
+
+
+				_triggerComputeFloatLabel() {
+					// Hack to manualy trigger compute function
+					this.alwaysFloatLabel = !this.alwaysFloatLabel
+					this.alwaysFloatLabel = !this.alwaysFloatLabel
+				}
+
+
+				/**
+				 * this method can be used to set the focus of the element
+				 */
+				focus() {
+					this.$.inputValue.focus()
+				}
+
+				_getValidity() {
+					var validValue = this._valueAsArray().length > 0
+					this.$$('paper-input-container').invalid = !validValue
+					return validValue
+				}
+
+
+				_computeHasDropDown() {
+					return this._items && this._items.length > 0
+				}
+			}
+
+			window.customElements.define(TkTokenField.is, TkTokenField)
+    </script>
+</dom-module>
