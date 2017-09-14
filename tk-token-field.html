@@ -10,6 +10,7 @@
 <link rel="import" href="../paper-button/paper-button.html">
 <link rel="import" href="../iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
 <link rel="import" href="../iron-selector/iron-selector.html">
+<link rel="import" href="../polymer-dragula/polymer-dragula.html">
 
 <link rel="import" href="tk-token-field-dropdown.html">
 
@@ -30,12 +31,14 @@
             }
 
             .tokens paper-button {
-                background: var(--tk-token-field-badge-color, --default-primary-color);
+                background-color: var(--app-secondary-color-dark);
                 margin: 2px 0;
-                color: var(--tk-token-field-badge-text-color, --text-primary-color);
-                height: 18px;
+                color: var(--app-text-color-light);
+                height: 20px;
                 font-size: 12px;
                 min-width: initial;
+                text-transform: capitalize;
+                padding-left: 8px;
             }
 
             .tokens paper-button iron-icon {
@@ -67,8 +70,8 @@
             }
 
             .iron-selected {
-                background-color: var(--tk-token-field-dropdown-selected-color, --default-primary-color);
-                color: var(--tk-token-field-dropdown-selected-text-color, --text-primary-color);
+                background-color: var(--app-primary-color);
+                color: var(--app-text-color-light);
             }
 
             label,
@@ -88,14 +91,15 @@
                 disabled$="[[disabled]]"
                 invalid="[[invalid]]">
 
-            <label slot="label" hidden$="[[!label]]" aria-hidden="true">[[label]]
-                <slot name="label-suffix"></slot>
+            <label slot="label" hidden$="[[!label]]" aria-hidden="true">
+                <span>[[label]]</span><slot name="label-suffix"></slot>
             </label>
 
             <slot name="prefix"></slot>
 
             <div class="paper-input-input container" slot="input">
-				<span class="tokens">
+                <polymer-dragula direction="horizontal">
+				<span id="tokensContainer" class="tokens">
 					<template is="dom-repeat" items="[[_tokens]]" as="token">
 						<paper-button
                                 tabindex="-1"
@@ -113,6 +117,7 @@
 					    <input id="inputValue">
 				    </iron-input>
 				</span>
+                </polymer-dragula>
             </div>
 
             <slot name="suffix"></slot>
@@ -127,9 +132,9 @@
 
         <tk-token-field-dropdown id="dropdownInput" auto-fit-on-attach no-overlap vertical-align="top" horizontal-align="left">
             <div slot="token-dropdown-content">
-                <iron-selector id="itemList" selected="{{itemSelected}}">
+                <iron-selector id="itemList" selected="{{itemSelected}}" on-iron-select="_itemSelected">
                     <template is="dom-repeat" items="{{_filteredItems}}" as="item">
-                        <div class="tk-token-selectable" name="[[_getItemValue(item)]]">[[_getItemLabel(item)]]</div>
+                        <div class="tk-token-selectable" name="[[_getItemValue(item)]]" on-tap="_clickItem">[[_getItemLabel(item)]]</div>
                     </template>
                 </iron-selector>
             </div>
@@ -317,11 +322,10 @@
 							computed: '_valueAsItemArray(value, _modeDropDown)'
 						},
 
-                        itemSelected: {
+						itemSelected: {
 							type: Object,
-                          value: null,
-                          observer: '_itemSelected'
-                        }
+							value: null
+						}
 					}
 				}
 
@@ -348,7 +352,7 @@
 				attached() {
 					super.attached()
 
-            /* Initialize the input helper span element for determining the actual width of the input text. This width will be used to create a dynamic width on the input field */
+					/* Initialize the input helper span element for determining the actual width of the input text. This width will be used to create a dynamic width on the input field */
 					this.$.inputWidthHelper.style = window.getComputedStyle(this.$.inputValue, null).cssText
 					this.$.inputWidthHelper.style.position = 'absolute'
 					this.$.inputWidthHelper.style.top = '-999px'
@@ -429,6 +433,10 @@
 					return !(this._valueAsArray().length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
 				}
 
+				_clickItem(e) {
+					setTimeout(()=>this._onEnter(), 100)
+				}
+
 				_itemsChanged(items) {
 					this._filterItems()
 				}
@@ -471,14 +479,6 @@
 						items.push(item)
 					}.bind(this))
 					return items
-				}
-
-				_itemSelected(itemIdx) {
-					if (itemIdx === null || itemIdx === undefined || itemIdx < 0 || itemIdx > this._filteredItems.length - 1) { return }
-					this._addToken(this._filteredItems[itemIdx])
-					setTimeout(function () {
-						this.focus()
-					}.bind(this), 0)
 				}
 
 				/**
