@@ -164,13 +164,13 @@
 						label: String,
 
 						/**
-						 * Value contains a comma seperated list of the selected items. In case you use data objects the value property will contain a comma seperated list of values located at the dataValuePath.
+						 * Value contains an array or a comma seperated list (input only) of the selected items. In case you use data objects the value property will contain an array of the values located at the dataValuePath.
 						 */
 						value: {
 							notify: true,
-							type: String,
+							type: Array,
 							value: function () {
-								return ''
+								return []
 							}
 						},
 
@@ -461,7 +461,7 @@
 				}
 
 				_valueAsArray() {
-					var value = this.value ? this.value.split(',') : []
+					var value = this.value && (typeof value === 'string') ? this.value.split(',') : this.value || []
 					return value.length === 1 && value[0] === '' ? [] : value
 				}
 
