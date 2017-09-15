@@ -387,11 +387,11 @@
 						this._setDataSource(data)
 					}
 					if (Array.isArray(data)) {
-						this.async(function () {
+						setTimeout(function () {
 							this._setDataSource(function () {
 								return data
 							})
-						}.bind(this))
+						}.bind(this),0)
 					}
 				}
 
@@ -560,7 +560,6 @@
 					e.stopPropagation()
 				}
 
-
 				_removeLastToken() {
 					var value = this._valueAsArray()
 					if (value.length > 0) {
@@ -568,18 +567,15 @@
 					}
 				}
 
-
 				_addToken(item) {
 					var values = this._valueAsArray()
 					if (this.maxTokens && values.length >= this.maxTokens) {
 						return
 					}
-					values.push(this._getItemValue(item))
-					this.set('value', values.toString())
+					this.push('value', this._getItemValue(item))
 					this._resetInput()
 					this._autoValidate()
 				}
-
 
 				_resetInput() {
 					this.set('_inputValue', '')
@@ -588,21 +584,18 @@
 					}
 				}
 
-
 				_removeToken(token) {
 					var value = this._valueAsArray()
-					value.splice(value.indexOf(token), 1)
-					this.set('value', value.toString())
+					this.splice('value', value.indexOf(token), 1)
+					this.set('value', value)
 					this._autoValidate()
 				}
-
 
 				_autoValidate() {
 					if (this.autoValidate) {
 						this.validate()
 					}
 				}
-
 
 				/**
 				 * Returns true if `value` is valid. The validator provided in `validator` will be used first,
