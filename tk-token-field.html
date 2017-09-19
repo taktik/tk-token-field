@@ -541,7 +541,7 @@
 				}
 
 				_removeToken(token) {
-					this.splice('value', this.value.indexOf(token), 1)
+					this.splice('value', this.value.findIndex(v => this._getItemValue(v) === token), 1)
 					this._autoValidate()
 				}
 
