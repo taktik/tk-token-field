@@ -17,7 +17,7 @@
     "iron-dropdown": "^2.0.0",
     "neon-animation": "^2.0.1",
     "web-animations-js": "^2.3.1",
-    "polymer-dragula": "https://github.com/taktik/polymer-dragula.git#3c5512eeed0ba5f96f3b6a303585e9c88609ed31"
+    "polymer-dragula": "https://github.com/taktik/polymer-dragula.git#fca5d81cbee95dbb53a47e3e6c50d4cdc0d9afcb"
 
   },
   "devDependencies": {
