@@ -25,14 +25,15 @@
                 display: none !important;
             }
 
+
             .tokens {
-                margin-right: 6px;
                 min-height: 24px;
+                font-size: 0;
             }
 
             .tokens paper-button {
                 background-color: var(--app-secondary-color-dark);
-                margin: 2px 0;
+                margin: 0 5px 0 0;
                 color: var(--app-text-color-light);
                 height: 20px;
                 font-size: 12px;
@@ -48,6 +49,7 @@
 
             input {
                 font: inherit;
+                font-size: 12px;
                 outline: none;
                 box-shadow: none;
                 border: none;
@@ -82,6 +84,32 @@
             ::slotted [prefix] {
                 margin-right: 4px;
             }
+
+            .gu-mirror {
+                position: fixed !important;
+                margin: 0 !important;
+                z-index: 9999 !important;
+                opacity: 0.8;
+                -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)";
+                filter: alpha(opacity=80);
+            }
+
+            .gu-hide {
+                display: none !important;
+            }
+
+            .gu-unselectable {
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
+                user-select: none !important;
+            }
+
+            .gu-transit {
+                opacity: 0.2;
+                -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";
+                filter: alpha(opacity=20);
+            }
         </style>
 
         <paper-input-container
@@ -92,18 +120,20 @@
                 invalid="[[invalid]]">
 
             <label slot="label" hidden$="[[!label]]" aria-hidden="true">
-                <span>[[label]]</span><slot name="label-suffix"></slot>
+                <span>[[label]]</span>
+                <slot name="label-suffix"></slot>
             </label>
 
             <slot name="prefix"></slot>
 
             <div class="paper-input-input container" slot="input">
-                <polymer-dragula direction="horizontal">
+                <polymer-dragula id="poldrag" direction="horizontal" mirror-container="[[tokensContainer()]]" on-dragula-drop="_reorder">
 				<span id="tokensContainer" class="tokens">
-					<template is="dom-repeat" items="[[_tokens]]" as="token">
+					<template is="dom-repeat" items="[[value]]" as="token">
 						<paper-button
                                 tabindex="-1"
-                                data-token$="[[_getItemValue(token)]]">[[_getItemLabel(token)]]<iron-icon icon="clear" on-tap="_handleDeleteToken"></iron-icon></paper-button>
+                                data-token$="[[_getItemValue(token)]]" data-index$="[[index]]">[[_getItemLabel(token)]]<iron-icon icon="clear"
+                                                                                                                                  on-tap="_handleDeleteToken"></iron-icon></paper-button>
 					</template>
 
                     <iron-input aria-labelledby="label"
@@ -133,7 +163,7 @@
         <tk-token-field-dropdown id="dropdownInput" auto-fit-on-attach no-overlap vertical-align="top" horizontal-align="left">
             <div slot="token-dropdown-content">
                 <iron-selector id="itemList" selected="{{itemSelected}}" on-iron-select="_itemSelected">
-                    <template is="dom-repeat" items="{{_filteredItems}}" as="item">
+                    <template is="dom-repeat" items="{{_items}}" as="item">
                         <div class="tk-token-selectable" name="[[_getItemValue(item)]]" on-tap="_clickItem">[[_getItemLabel(item)]]</div>
                     </template>
                 </iron-selector>
@@ -164,7 +194,7 @@
 						label: String,
 
 						/**
-						 * Value contains an array or a comma seperated list (input only) of the selected items. In case you use data objects the value property will contain an array of the values located at the dataValuePath.
+						 * Value contains an array of the selected items. Each item must contain a dataValuePath and a dataLabelPath value
 						 */
 						value: {
 							notify: true,
@@ -177,11 +207,13 @@
 						/**
 						 * The data attribute can be used to set the list box options. This method expects an array or function of objects or string values. If using an array of objects the default properties are value and label [{"value": 21, "label": "Mark"},{...}]
 						 */
-						data: {
+						dataSource: {
 							type: Object,
-							observer: '_dataChanged',
+							observer: '_dataSourceChanged',
 							value: function () {
-								return {}
+								return function (searchString) {
+									return Promise.resolve([])
+								}
 							}
 						},
 
@@ -199,17 +231,6 @@
 						dataLabelPath: {
 							type: String,
 							value: 'label'
-						},
-
-						/**
-						 * Optionaly you can supply the element with a list of items which will populate the dropdown list
-						 */
-						_items: {
-							notify: true,
-							type: Array,
-							value: function () {
-								return []
-							}
 						},
 
 						allowedDuplicateValues: {
@@ -282,7 +303,7 @@
 						/**
 						 * This is the internal working list for the dropdown box. This list will exclude the potential selected tokens.
 						 */
-						_filteredItems: {
+						_items: {
 							notify: true,
 							type: Array,
 							value: function () {
@@ -317,11 +338,6 @@
 							value: ''
 						},
 
-						_tokens: {
-							type: Array,
-							computed: '_valueAsItemArray(value, _modeDropDown)'
-						},
-
 						itemSelected: {
 							type: Object,
 							value: null
@@ -332,7 +348,8 @@
 				static get observers() {
 					return ['_observeInputChange(_inputValue)',
 						'_filterItems(value)',
-						'_itemsChanged(_items.splice)']
+						'_valueChanged(value.splices)'
+					]
 				}
 
 				get keyBindings() {
@@ -347,6 +364,12 @@
 				 */
 				get inputElement() {
 					return this.$.inputValue
+				}
+
+				_valueChanged(e) {
+					if (e) {
+						this.dispatchEvent(new CustomEvent('value-splices-change', {detail: e, composed: true}))
+					}
 				}
 
 				attached() {
@@ -367,60 +390,41 @@
 					this._filterItems()
 				}
 
-
-				/**
-				 * This will return an array of the selected objects
-				 */
-				getSelectedItems() {
-					if (this._modeDropDown) {
-						return this._tokens()
-					}
+				tokensContainer() {
+					return this.$.tokensContainer
 				}
 
-				_setDataSource(dataSource) {
-					this.dataSource = dataSource
-					this._initializeItems()
+				_reorder(e) {
+					const value = this.value
+					const to = (e.detail.sibling && e.detail.sibling.dataset.index && (parseInt(e.detail.sibling.dataset.index) + 1) || (value.length + 1)) - 1 //Avoid 0 being seen as false
+					const from = e.detail.el.dataset.index && parseInt(e.detail.el.dataset.index)
+
+					this.$.poldrag.drake.cancel(true)
+
+					setTimeout(() => {
+						const moved = this.splice('value', from, 1)[0]
+						this.splice('value', to > from ? to - 1 : to, 0, moved)
+					}, 0)
 				}
 
-				_dataChanged(data) {
+				_dataSourceChanged(dataSource) {
 					if (typeof data === 'function') {
-						this._setDataSource(data)
-					}
-					if (Array.isArray(data)) {
-						setTimeout(function () {
-							this._setDataSource(function () {
-								return data
-							})
-						}.bind(this),0)
+						this.dataSource = dataSource
+						this._filterItems()
 					}
 				}
 
-				_initializeItems() {
+				_filterItems(searchString) {
 					if (this.dataSource) {
-						var data = this.dataSource()
+						var data = this.dataSource(searchString)
 						if (data && data instanceof Promise) {
 							data.then(function (res) {
-								this._setItems(res)
+								this.set('_items', res.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
 							}.bind(this))
 						} else {
-							this._setItems(data)
+							this.set('_items', data.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
 						}
 					}
-				}
-
-				_setItems(data) {
-					if (data.length > 0 && typeof data[0] === 'string') {
-						var items = []
-						data.forEach(function (value) {
-							var item = {}
-							item[this.dataValuePath] = item[this.dataLabelPath] = value
-							items.push(item)
-						}.bind(this))
-						this.set('_items', items)
-					} else {
-						this.set('_items', data)
-					}
-					this.set('_modeDropDown', true)
 				}
 
 				/**
@@ -430,15 +434,11 @@
 					if (alwaysFloatLabel) {
 						return true
 					}
-					return !(this._valueAsArray().length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
+					return !(this.value.length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
 				}
 
 				_clickItem(e) {
-					setTimeout(()=>this._onEnter(), 100)
-				}
-
-				_itemsChanged(items) {
-					this._filterItems()
+					setTimeout(() => this._onEnter(), 100)
 				}
 
 				_lookupItemByPath(item, path) {
@@ -460,54 +460,12 @@
 					return this._lookupItemByPath(item, this.dataValuePath)
 				}
 
-				_valueAsArray() {
-					var value = this.value && (typeof value === 'string') ? this.value.split(',') : this.value || []
-					return value.length === 1 && value[0] === '' ? [] : value
-				}
-
-				_valueAsItemArray() {
-					var values = this._valueAsArray()
-					var items = []
-					values.forEach(function (value) {
-						var item = {}
-						item[this.dataValuePath] = item[this.dataLabelPath] = value
-						if (this._modeDropDown) {
-							item = this._items.find(function (item) {
-								return this._getItemValue(item) === value
-							}.bind(this))
-						}
-						items.push(item)
-					}.bind(this))
-					return items
-				}
-
 				/**
 				 * Recalculate string width after input change
 				 */
 				_observeInputChange() {
 					this.$.inputValue.style.width = (this.$.inputWidthHelper.offsetWidth + 10) + 'px'
-					this._filterItems()
-				}
-
-				_filterItems() {
-					if (this._hasDropDown && this._filteredItems) {
-						this.splice('_filteredItems', 0, this._filteredItems.length)
-						var filtered = this._items.filter(function (item) {
-							return this._inputValue.length === 0 || (this._getItemLabel(item).toLowerCase()).indexOf(this._inputValue.toLowerCase()) !== -1
-						}.bind(this))
-						this._items.forEach(function (item) {
-							var values = this._valueAsArray()
-							var itemIndex = filtered.findIndex(function (filteredItem) {
-								return this._getItemValue(filteredItem) === this._getItemValue(item)
-							}.bind(this))
-
-							if (itemIndex !== -1) {
-								if (this.allowedDuplicateValues || values.indexOf(this._getItemValue(item)) === -1) {
-									this.push('_filteredItems', item)
-								}
-							}
-						}.bind(this))
-					}
+					this._filterItems(this._inputValue)
 				}
 
 				_handleUpDown(event) {
@@ -537,7 +495,7 @@
 				}
 
 				_onEnter() {
-					if (this.$.dropdownInput.dropdown.opened && this._filteredItems.length > 0) {
+					if (this.$.dropdownInput.dropdown.opened && this._items.length > 0) {
 						var item = this._items.find(function (item) {
 							return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
 						}.bind(this))
@@ -545,7 +503,7 @@
 					} else {
 						if (this._inputValue && this._inputValue.length > 0 && !this._modeDropDown) {
 							var item = {}
-							item[this.dataValuePath] = item[this.dataLabelPath] = this._inputValue
+							item[this.dataLabelPath] = this._inputValue
 							this._addToken(item)
 						}
 					}
@@ -561,33 +519,29 @@
 				}
 
 				_removeLastToken() {
-					var value = this._valueAsArray()
-					if (value.length > 0) {
-						this._removeToken(value[value.length - 1])
+					if (this.value.length > 0) {
+						this._removeToken(this.value[this.value.length - 1])
 					}
 				}
 
 				_addToken(item) {
-					var values = this._valueAsArray()
-					if (this.maxTokens && values.length >= this.maxTokens) {
+					if (this.maxTokens && this.value.length >= this.maxTokens) {
 						return
 					}
-					this.push('value', this._getItemValue(item))
+					this.push('value', item)
 					this._resetInput()
 					this._autoValidate()
 				}
 
 				_resetInput() {
 					this.set('_inputValue', '')
-					if (this._hasDropDown && this._filteredItems.length > 0) {
+					if (this._hasDropDown && this._items.length > 0) {
 						this.$$('iron-selector').selectIndex(0)
 					}
 				}
 
 				_removeToken(token) {
-					var value = this._valueAsArray()
-					this.splice('value', value.indexOf(token), 1)
-					this.set('value', value)
+					this.splice('value', this.value.indexOf(token), 1)
 					this._autoValidate()
 				}
 
@@ -606,7 +560,7 @@
 					var valid = true
 
 					// Empty, required input is invalid
-					if (this.required && this.value === '') {
+					if (this.required && this.value.length === 0) {
 						valid = false
 					} else if (this.hasValidator()) {
 						valid = Polymer.IronValidatableBehavior.validate.call(this, this.value)
@@ -652,7 +606,7 @@
 				}
 
 				_getValidity() {
-					var validValue = this._valueAsArray().length > 0
+					var validValue = this.value.length > 0
 					this.$$('paper-input-container').invalid = !validValue
 					return validValue
 				}
