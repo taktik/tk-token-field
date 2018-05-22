@@ -38,7 +38,7 @@
                 height: 20px;
                 font-size: 12px;
                 min-width: initial;
-                text-transform: capitalize;
+                text-transform: none;
                 padding-left: 8px;
             }
 
@@ -109,6 +109,24 @@
                 opacity: 0.2;
                 -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=20)";
                 filter: alpha(opacity=20);
+            }
+
+            div.tk-token-selectable {
+                padding: 4px 16px 4px 16px;
+                font-size: 12px;
+            }
+
+            paper-input-container {
+                --paper-input-container-focus-color: var(--app-primary-color);
+                --paper-input-container-label: {
+                    color: var(--app-text-color);
+                    opacity: 1;
+                };
+                --paper-input-container-underline-disabled: {
+                    border-bottom: 1px solid var(--app-text-color);
+
+                };
+                --paper-input-container-color: var(--app-text-color);
             }
         </style>
 
@@ -210,11 +228,7 @@
 						dataSource: {
 							type: Object,
 							observer: '_dataSourceChanged',
-							value: function () {
-								return function (searchString) {
-									return Promise.resolve([])
-								}
-							}
+							value: null
 						},
 
 						/**
@@ -347,7 +361,7 @@
 
 				static get observers() {
 					return ['_observeInputChange(_inputValue)',
-						'_filterItems(value)',
+						'_filterItems(_inputValue)',
 						'_valueChanged(value.splices)'
 					]
 				}
@@ -408,7 +422,7 @@
 				}
 
 				_dataSourceChanged(dataSource) {
-					if (typeof data === 'function') {
+					if (dataSource && typeof dataSource.filter === 'function') {
 						this.dataSource = dataSource
 						this._filterItems()
 					}
@@ -416,11 +430,14 @@
 
 				_filterItems(searchString) {
 					if (this.dataSource) {
-						var data = this.dataSource(searchString)
+						var data = this.dataSource.filter(searchString)
 						if (data && data instanceof Promise) {
-							data.then(function (res) {
-								this.set('_items', res.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
-							}.bind(this))
+							data.then(res => {
+                              this.set('_items', res.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
+                              if (this._items.length) {
+									this._openDropdown()
+                              }
+							})
 						} else {
 							this.set('_items', data.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
 						}
@@ -496,9 +513,9 @@
 
 				_onEnter() {
 					if (this.$.dropdownInput.dropdown.opened && this._items.length > 0) {
-						var item = this._items.find(function (item) {
+						const item = this._items.find(item => {
 							return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
-						}.bind(this))
+						})
 						this._addToken(item)
 					} else {
 						if (this._inputValue && this._inputValue.length > 0 && !this._modeDropDown) {
