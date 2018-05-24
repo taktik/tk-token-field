@@ -409,7 +409,7 @@
 				}
 
 				_reorder(e) {
-					const value = this.value
+					const value = this.value || []
 					const to = (e.detail.sibling && e.detail.sibling.dataset.index && (parseInt(e.detail.sibling.dataset.index) + 1) || (value.length + 1)) - 1 //Avoid 0 being seen as false
 					const from = e.detail.el.dataset.index && parseInt(e.detail.el.dataset.index)
 
@@ -433,13 +433,13 @@
 						var data = this.dataSource.filter(searchString)
 						if (data && data instanceof Promise) {
 							data.then(res => {
-                              this.set('_items', res.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
+                              this.set('_items', res.filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
                               if (this._items.length) {
 									this._openDropdown()
                               }
 							})
 						} else {
-							this.set('_items', data.filter(v => this.allowedDuplicateValues || !this.value.find(vv => vv[this.dataLabelPath] === v)))
+							this.set('_items', data.filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
 						}
 					}
 				}
@@ -451,7 +451,7 @@
 					if (alwaysFloatLabel) {
 						return true
 					}
-					return !(this.value.length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
+					return !((this.value || []).length === 0 && this.$.inputValue !== document.activeElement && this !== document.activeElement)
 				}
 
 				_clickItem(e) {
@@ -470,7 +470,7 @@
 				}
 
 				_getItemLabel(item) {
-					return this._lookupItemByPath(item, this.dataLabelPath)
+					return this.dataLabelPath && this.dataLabelPath.split(':').map(p=>this._lookupItemByPath(item, p)).join(':')
 				}
 
 				_getItemValue(item) {
@@ -527,7 +527,6 @@
 					this._openDropdown()
 				}
 
-
 				_handleDeleteToken(e) {
 					var el = (e.target.tagName === 'IRON-ICON' ? e.target.parentElement : e.target)
 					this._removeToken(el.dataset.token)
@@ -536,13 +535,13 @@
 				}
 
 				_removeLastToken() {
-					if (this.value.length > 0) {
+					if ((this.value || []).length > 0) {
 						this._removeToken(this.value[this.value.length - 1])
 					}
 				}
 
 				_addToken(item) {
-					if (this.maxTokens && this.value.length >= this.maxTokens) {
+					if (this.maxTokens && (this.value || []).length >= this.maxTokens) {
 						return
 					}
 					this.push('value', item)
@@ -558,7 +557,7 @@
 				}
 
 				_removeToken(token) {
-					this.splice('value', this.value.findIndex(v => this._getItemValue(v) === token), 1)
+					this.splice('value', ( this.value || []).findIndex(v => this._getItemValue(v) === token), 1)
 					this._autoValidate()
 				}
 
@@ -577,7 +576,7 @@
 					var valid = true
 
 					// Empty, required input is invalid
-					if (this.required && this.value.length === 0) {
+					if (this.required && (this.value || [])  .length === 0) {
 						valid = false
 					} else if (this.hasValidator()) {
 						valid = Polymer.IronValidatableBehavior.validate.call(this, this.value)
@@ -602,18 +601,15 @@
 					}
 				}
 
-
 				_handleInputFocus(e) {
 					this._triggerComputeFloatLabel()
 				}
-
 
 				_triggerComputeFloatLabel() {
 					// Hack to manualy trigger compute function
 					this.alwaysFloatLabel = !this.alwaysFloatLabel
 					this.alwaysFloatLabel = !this.alwaysFloatLabel
 				}
-
 
 				/**
 				 * this method can be used to set the focus of the element
