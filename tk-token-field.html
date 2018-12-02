@@ -1,16 +1,15 @@
-<link rel="import" href="../polymer/polymer-element.html">
-
-<link rel="import" href="../iron-input/iron-input.html">
-<link rel="import" href="../paper-input/paper-input-container.html">
-<link rel="import" href="../paper-input/paper-input-error.html">
-<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
-<link rel="import" href="../iron-form-element-behavior/iron-form-element-behavior.html">
-<link rel="import" href="../iron-validatable-behavior/iron-validatable-behavior.html">
-<link rel="import" href="../iron-icons/iron-icons.html">
-<link rel="import" href="../paper-button/paper-button.html">
-<link rel="import" href="../iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
-<link rel="import" href="../iron-selector/iron-selector.html">
-<link rel="import" href="../polymer-dragula/polymer-dragula.html">
+<link rel="import" href="bower_components/polymer/polymer-element.html">
+<link rel="import" href="bower_components/iron-input/iron-input.html">
+<link rel="import" href="bower_components/paper-input/paper-input-container.html">
+<link rel="import" href="bower_components/paper-input/paper-input-error.html">
+<link rel="import" href="bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="bower_components/iron-form-element-behavior/iron-form-element-behavior.html">
+<link rel="import" href="bower_components/iron-validatable-behavior/iron-validatable-behavior.html">
+<link rel="import" href="bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="bower_components/paper-button/paper-button.html">
+<link rel="import" href="bower_components/iron-a11y-keys-behavior/iron-a11y-keys-behavior.html">
+<link rel="import" href="bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="bower_components/polymer-dragula/polymer-dragula.html">
 
 <link rel="import" href="tk-token-field-dropdown.html">
 
@@ -111,6 +110,18 @@
                 filter: alpha(opacity=20);
             }
 
+            span.edited-token {
+                background-color: var(--app-secondary-color);
+                margin: 0 5px 0 0;
+                padding: 2px 8px 2px 8px;
+                border-radius: 3px;
+                color: var(--app-text-color-light);
+                height: 20px;
+                font-size: 12px;
+                min-width: initial;
+                text-transform: none;
+            }
+
             div.tk-token-selectable {
                 padding: 4px 16px 4px 16px;
                 font-size: 12px;
@@ -147,14 +158,10 @@
             <div class="paper-input-input container" slot="input">
                 <polymer-dragula id="poldrag" direction="horizontal" mirror-container="[[tokensContainer()]]" on-dragula-drop="_reorder">
 				<span id="tokensContainer" class="tokens">
-					<template is="dom-repeat" items="[[value]]" as="token">
-						<paper-button
-                                tabindex="-1"
-                                data-token$="[[_getItemValue(token)]]" data-index$="[[index]]">[[_getItemLabel(token)]]<iron-icon icon="clear"
-                                                                                                                                  on-tap="_handleDeleteToken"></iron-icon></paper-button>
+					<template is="dom-repeat" items="[[pre]]" as="token">
+						<paper-button tabindex="-1" data-token$="[[_getItemValue(token)]]" data-index$="[[index]]" on-tap="_handleSelectToken">[[_getItemLabel(token)]]<iron-icon icon="clear" on-tap="_handleDeleteToken"></iron-icon></paper-button>
 					</template>
-
-                    <iron-input aria-labelledby="label"
+                    <span class$="[[_editedTokenClass(_inputValue)]]"><iron-input aria-labelledby="label"
                                 required$="[[required]]"
                                 bind-value="{{_inputValue}}"
                                 allowed-pattern="[[allowedPattern]]"
@@ -163,7 +170,10 @@
                                 autocomplete="off"
                                 disabled$="[[disabled]]">
 					    <input id="inputValue">
-				    </iron-input>
+				    </iron-input></span>
+                    <template is="dom-repeat" items="[[post]]" as="token">
+						<paper-button tabindex="-1" data-token$="[[_getItemValue(token)]]" data-index$="[[index]]" on-tap="_handleSelectToken">[[_getItemLabel(token)]]<iron-icon icon="clear" on-tap="_handleDeleteToken"></iron-icon></paper-button>
+					</template>
 				</span>
                 </polymer-dragula>
             </div>
@@ -355,14 +365,33 @@
 						itemSelected: {
 							type: Object,
 							value: null
-						}
-					}
+						},
+
+                        selectedTokenIndex: {
+						    type: Number,
+                            value: null
+                        },
+
+                        pre: {
+						    notify: true,
+                            type: Array,
+                            value: () => []
+                        },
+
+                        post: {
+                            type: Array,
+                            value: () => []
+                        }
+
+                    }
 				}
 
 				static get observers() {
-					return ['_observeInputChange(_inputValue)',
+					return [
+					    '_observeInputChange(_inputValue)',
 						'_filterItems(_inputValue)',
-						'_valueChanged(value.splices)'
+						'_valueChanged(value.splices)',
+                        '_prePostChanged(value, selectedTokenIndex, value.splices)'
 					]
 				}
 
@@ -439,13 +468,16 @@
                               }
 							})
 						} else {
-							this.set('_items', data.filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
-						}
+							this.set('_items', (data || []).filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
+                            if (this._items.length) {
+                                this._openDropdown()
+                            }
+                        }
 					}
 				}
 
 				/**
-				 * This method will automaticly set the label float.
+				 * This method will automatically set the label float.
 				 */
 				_computeAlwaysFloatLabel(value, alwaysFloatLabel) {
 					if (alwaysFloatLabel) {
@@ -473,6 +505,17 @@
 					return this.dataLabelPath && this.dataLabelPath.split(':').map(p=>this._lookupItemByPath(item, p)).join(':')
 				}
 
+                _getItemLabelForIndex(idx) {
+				    return idx != null && this.value[idx] && this._getItemLabel(this.value[idx])
+                }
+
+                _null(v) {
+				    return v === null
+                }
+
+                _editedTokenClass(s) {
+				    return s && s.length ? 'edited-token' : ''
+                }
 				_getItemValue(item) {
 					return this._lookupItemByPath(item, this.dataValuePath)
 				}
@@ -517,22 +560,45 @@
 							return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
 						})
 						this._addToken(item)
+                        this.select(this.value.length -1)
+                        this.$.dropdownInput && this.$.dropdownInput.close()
 					} else {
 						if (this._inputValue && this._inputValue.length > 0 && !this._modeDropDown) {
 							var item = {}
 							item[this.dataLabelPath] = this._inputValue
-							this._addToken(item)
+							 this._addToken(item)
 						}
 					}
-					this._openDropdown()
 				}
 
-				_handleDeleteToken(e) {
+				_prePostChanged(vals, idx)  {
+				    this.set('pre', idx !== null ? idx && vals.slice(0, idx) || [] : vals.map(x => x))
+                    this.set('post', idx !== null && idx < vals.length - 1 ? vals.slice(idx+1) : [])
+
+                    console.log('pre', this.pre)
+                    console.log('post', this.post)
+                }
+
+                _handleDeleteToken(e) {
 					var el = (e.target.tagName === 'IRON-ICON' ? e.target.parentElement : e.target)
 					this._removeToken(el.dataset.token)
 					this.focus()
 					e.stopPropagation()
 				}
+
+				select(idx) {
+                    this.set('selectedTokenIndex', idx)
+
+                    this.focus()
+                    this._resetInput()
+                    this.set('_inputValue',this._getItemLabel(this.value[this.selectedTokenIndex]))
+
+                }
+
+                _handleSelectToken(e) {
+                    this.select((e.target || null) && Number(e.target.dataset.index || 0) )
+                    e.stopPropagation()
+                }
 
 				_removeLastToken() {
 					if ((this.value || []).length > 0) {
@@ -541,12 +607,17 @@
 				}
 
 				_addToken(item) {
-					if (this.maxTokens && (this.value || []).length >= this.maxTokens) {
-						return
-					}
-					this.push('value', item)
-					this._resetInput()
-					this._autoValidate()
+				    if (null === this.selectedTokenIndex) {
+                        if (this.maxTokens && (this.value || []).length >= this.maxTokens) {
+                            return
+                        }
+                        this.push('value', item)
+                    } else {
+                        this.value[this.selectedTokenIndex] = item
+                        this.set('selectedTokenIndex', null)
+                    }
+                    this._resetInput()
+                    this._autoValidate()
 				}
 
 				_resetInput() {
@@ -589,7 +660,6 @@
 
 
 				_handleContainerTap(e) {
-					this._openDropdown()
 					this.focus()
 				}
 

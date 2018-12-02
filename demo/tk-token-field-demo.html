@@ -1,0 +1,42 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../tk-token-field.html">
+
+<dom-module id="tk-token-field-demo">
+    <template>
+        <tk-token-field data-source="[[_dataSource()]]"></tk-token-field>
+    </template>
+
+    <script>
+			/**
+			 * `tk-token-field`
+			 * A field that displays tokens
+			 *
+			 * @customElement
+			 * @polymer
+			 * @demo demo/index.html
+			 */
+			class TkTokenFieldDemo extends Polymer.Element {
+				static get is() {
+					return 'tk-token-field-demo'
+				}
+
+				static get properties() {
+					return {}
+				}
+
+				static get observers() {
+					return [
+					]
+				}
+
+				_dataSource() {
+				    return {
+                        filter: (s) => ['bruxelles','liege','namur','anvers'].map(x => ({label:x, value:x})).filter(x => x.label.includes(s))
+                    }
+                }
+
+			}
+
+			window.customElements.define(TkTokenFieldDemo.is, TkTokenFieldDemo)
+    </script>
+</dom-module>
