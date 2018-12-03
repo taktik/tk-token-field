@@ -21,11 +21,7 @@ module.exports = {
 	// the property we’ll need to tell it to look there in addition to the
 	// bower_components folder.
 	resolve: {
-		modules: [
-			path.resolve(__dirname, 'bower_components'),
-			path.resolve(__dirname, 'node_modules'),
-
-		],
+		modules: [ 'bower_components', 'node_modules'],
 		extensions: ['.ts', '.tsx', '.js', '.jsx', '.html']
 	},
 	// These rules tell Webpack how to process different module types.cd ..
