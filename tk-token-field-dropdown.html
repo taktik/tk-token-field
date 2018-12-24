@@ -14,6 +14,7 @@
                 color: var(--tk-token-field-dropdown-text-color, --secondary-text-color);
                 @apply(--shadow-elevation-2dp);
                 min-width: 280px;
+                min-height: 26px;
             }
         </style>
 
@@ -88,6 +89,13 @@
 
 					this.dropdown = this.$.dropdown
 				}
+
+				/**
+                 *  Call after having updated the content div
+                 */
+				update() {
+                    this.$.dropdown.refit()
+                }
 
 
 				/**

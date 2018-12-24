@@ -389,7 +389,6 @@
             static get observers() {
                 return [
                     '_observeInputChange(_inputValue)',
-                    '_filterItems(_inputValue)',
                     '_valueChanged(value.splices)',
                     '_prePostChanged(value, selectedTokenIndex, value.splices)'
                 ]
@@ -465,12 +464,16 @@
                             this.set('_items', res.filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
                             if (this._items.length) {
                                 this._openDropdown()
+                            } else {
+                                this._closeDropdown()
                             }
                         })
                     } else {
                         this.set('_items', (data || []).filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
                         if (this._items.length) {
                             this._openDropdown()
+                        } else {
+                            this._closeDropdown()
                         }
                     }
                 }
@@ -556,18 +559,20 @@
             }
 
             _onEnter() {
-                if (this.$.dropdownInput.dropdown.opened && this._items.length > 0) {
-                    const item = this._items.find(item => {
-                        return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
-                    })
-                    this._addToken(item)
+                const item = this.$.dropdownInput.dropdown.opened && this._items.length > 0 && this._items.find(item => {
+                    return this._getItemValue(item) === this.$$('iron-selector').selectedItem.name
+                })
+
+                if (item && !(this._inputValue || '').startsWith(this._getItemLabel(item))) {
+                    console.log('Did not validate because of '+this._inputValue+' not starting by '+this._getItemValue(item))
+                    this._validateToken(item)
+                    //Edit latest
                     this.select(this.value.length -1)
-                    this.$.dropdownInput && this.$.dropdownInput.close()
                 } else {
                     if (this._inputValue && this._inputValue.length > 0 && !this._modeDropDown) {
-                        var item = {}
-                        item[this.dataLabelPath] = this._inputValue
-                        this._addToken(item)
+                        const placeHolder = {}
+                        placeHolder[this.dataLabelPath] = this._inputValue
+                        this._validateToken(placeHolder)
                     }
                 }
             }
@@ -617,7 +622,7 @@
                 }
             }
 
-            _addToken(item) {
+            _validateToken(item) {
                 if (null === this.selectedTokenIndex || this.selectedTokenIndex > this.value.length - 1) {
                     if (this.maxTokens && (this.value || []).length >= this.maxTokens) {
                         return
@@ -625,8 +630,8 @@
                     this.push('value', item)
                 } else {
                     Object.assign(this.value[this.selectedTokenIndex], item)
-                    this.set('selectedTokenIndex', null)
                     this.dispatchEvent(new CustomEvent('value-splices-change', {detail:this.value, composed: true}))
+                    this.set('selectedTokenIndex', null)
                 }
                 this._resetInput()
                 this._autoValidate()
@@ -680,6 +685,14 @@
                 if (this._hasDropDown && !this.$.dropdownInput.dropdown.opened) {
                     this.$.dropdownInput.open()
                     this.$$('iron-selector').selected = this.$$('iron-selector').selected || 0
+                } else {
+                    this.$.dropdownInput.update()
+                }
+            }
+
+            _closeDropdown() {
+                if (this.$.dropdownInput.dropdown.opened) {
+                    this.$.dropdownInput.close()
                 }
             }
 
