@@ -461,6 +461,7 @@
                     var data = this.dataSource.filter(searchString)
                     if (data && data instanceof Promise) {
                         data.then(res => {
+                            if (!res) { return } //canceled
                             this.set('_items', res.filter(v => this.allowedDuplicateValues || !(this.value || []).find(vv => vv[this.dataLabelPath] === v)))
                             if (this._items.length) {
                                 this._openDropdown()
