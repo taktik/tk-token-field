@@ -30,6 +30,11 @@
                 font-size: 0;
             }
 
+            .tokens[disabled] paper-button  {
+                background-color: var(--app-secondary-color-light) !important;
+                color: var(--app-text-color-dark) !important;
+            }
+
             .tokens paper-button {
                 background-color: var(--app-secondary-color-dark);
                 margin: 0 5px 0 0;
@@ -127,6 +132,10 @@
                 font-size: 12px;
             }
 
+            paper-input-container[disabled] {
+                opacity: 1 !important;
+            }
+
             paper-input-container {
                 --paper-input-container-focus-color: var(--app-primary-color);
                 --paper-input-container-label: {
@@ -157,7 +166,7 @@
 
             <div class="paper-input-input container" slot="input">
                 <polymer-dragula id="poldrag" direction="horizontal" mirror-container="[[tokensContainer()]]" on-dragula-drop="_reorder">
-				<span id="tokensContainer" class="tokens">
+				<span id="tokensContainer" class="tokens" disabled$="[[disabled]]">
 					<template is="dom-repeat" items="[[pre]]" as="token">
 						<paper-button tabindex="-1" data-token$="[[_getItemValue(token)]]" data-index$="[[index]]" on-tap="_handleSelectToken">[[_getItemLabel(token)]]<iron-icon icon="clear" on-tap="_handleDeleteToken"></iron-icon></paper-button>
 					</template>
