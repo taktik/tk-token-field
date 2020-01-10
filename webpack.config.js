@@ -21,7 +21,7 @@ module.exports = {
 	// the property we’ll need to tell it to look there in addition to the
 	// bower_components folder.
 	resolve: {
-		modules: [ 'bower_components', 'node_modules'],
+		modules: [ 'node_modules'],
 		extensions: ['.ts', '.tsx', '.js', '.jsx', '.html']
 	},
 	// These rules tell Webpack how to process different module types.cd ..
@@ -29,18 +29,6 @@ module.exports = {
 	// CSS, and (thanks to our loader) HTML.
 	module: {
 		rules: [
-			{
-				// If you see a file that ends in .html, send it to these loaders.
-				test: /\.html$/,
-				// This is an example of chained loaders in Webpack.
-				// Chained loaders run last to first. So it will run
-				// polymer-webpack-loader, and hand the output to
-				// babel-loader. This let's us transpile JS in our `<script>` elements.
-				use: [
-					{loader: 'babel-loader'},
-					{loader: 'polymer-webpack-loader'}
-				]
-			},
 			{
 				// If you see a file that ends in .js, just send it to the babel-loader.
 				test: /\.js$/,
@@ -73,8 +61,8 @@ module.exports = {
 		// That's important because the custom-elements-es5-adapter.js MUST
 		// remain in ES2015. We’ll talk about this a bit later :)
 		new CopyWebpackPlugin([{
-			from: path.resolve(__dirname, 'bower_components/webcomponentsjs/*.js'),
-			to: 'bower_components/webcomponentsjs/[name].[ext]'
+			from: path.resolve(__dirname, 'node_modules/@webcomponents/webcomponentsjs/*.js'),
+			to: 'webcomponentsjs/[name].[ext]'
 		}]),
 
 		new Clean(['build']),
