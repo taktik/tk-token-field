@@ -1,7 +1,7 @@
 {
   "description": "Polymer implementation of a token field",
   "name": "@taktik/tk-token-field",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "demo": "webpack-dev-server --config webpack.config.js",
