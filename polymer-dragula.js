@@ -23,7 +23,7 @@ limitations under the License.
  */
 
 import {PolymerElement, html} from '@polymer/polymer';
-import dragula from 'dragula.js/dist/dragula';
+import dragula from 'dragula/dist/dragula';
 window.dragula = dragula
 import {beforeNextRender} from '@polymer/polymer/lib/utils/render-status.js';
 import {LegacyElementMixin} from "@polymer/polymer/lib/legacy/legacy-element-mixin";
