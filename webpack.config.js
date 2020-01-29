@@ -22,7 +22,8 @@ module.exports = {
 	// bower_components folder.
 	resolve: {
 		modules: [ 'node_modules'],
-		extensions: ['.ts', '.tsx', '.js', '.jsx', '.html']
+		extensions: ['.ts', '.tsx', '.js', '.jsx', '.html'],
+		alias: { '@polymer/iron-selector': path.resolve(__dirname, 'node_modules/@taktik/iron-selector-meta-shift')}
 	},
 	// These rules tell Webpack how to process different module types.cd ..
 	// Remember, *everything* is a module in Webpack. That includes

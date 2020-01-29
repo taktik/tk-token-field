@@ -7,8 +7,7 @@
     "demo": "webpack-dev-server --config webpack.config.js",
     "build:test:watch": "webpack --config webpack.test.js --watch",
     "pretest": "webpack --config webpack.test.js",
-    "doc": "typedoc --out  doc/ ",
-    "postinstall": "symlink-dir node_modules/@taktik/iron-selector-meta-shift node_modules/@polymer/iron-selector"
+    "doc": "typedoc --out  doc/ "
   },
   "author": "",
   "license": "MIT",
