@@ -52,7 +52,7 @@
     "include-loader": "^1.1.0-beta",
     "junit-reporter": "0.0.2",
     "node-bourbon": "^4.2.8",
-    "node-sass": "^4.9.3",
+    "node-sass": "^7.0.0",
     "polymer-build": "^1.6.0",
     "polymer-webpack-loader": "^2.0.3",
     "postcss-loader": "^2.1.6",
