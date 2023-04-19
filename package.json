@@ -71,7 +71,7 @@
     "wct-junit-reporter": "git+https://github.com/marcelmeulemans/wct-junit-reporter.git",
     "web-component-tester": "^6.8.0",
     "webpack": "^4.19.1",
-    "webpack-cli": "^2.1.5",
+    "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^3.1.8",
     "webworkify-webpack": "^2.1.3"
   },
